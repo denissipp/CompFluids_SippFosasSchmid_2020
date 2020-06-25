@@ -1,0 +1,62 @@
+include "../Common/intro.edp"
+real dt;
+int nbre,step;
+{
+	ifstream file("data2.txt");
+	file >> nbre;	// number of iterations in direct and adjoint simulation
+	file >> dt;		// time-step
+	file >> step;	// number of time-steps between two snapshots
+};	
+int ns=(nbre-1)/step+1;	// number of snapshots
+int in;
+{
+	ifstream file("init.txt");
+	file >> in;	// number of iterations in direct and adjoint simulation
+};	
+
+string dir="../DNS2/vect2/cbf";
+string filename="gramianmf.txt";
+{
+	ofstream f(filename);
+};
+
+WV[int] [ua,va](ns);
+WV [aux1,aux2];
+WV [um,vm];
+	{
+		ifstream file("mfcorr.txt"); 
+		file >> um[];
+	};    
+varf Mass([v1,v2],[w1,w2])=int1d(th,1)(v1*w1);	// mass-matrix
+matrix MatMass=Mass(WV,WV,solver=CG);
+	
+int numi,numj;
+for (int j=1;j<=nbre; j+=step)	// loop to read all snapshots of adjoint simulation
+{
+	numj=(j-1)/step+1;
+	cout << endl << j << "   " << numj-1 << endl;	
+	{
+		ifstream file(dir+"_"+(100000+in+j)+"_.txt"); 
+		file >> ua[numj-1][];
+		ua[numj-1][]-=um[];
+	};    
+};	
+
+for (int i=1;i<=nbre; i+=step)	// loop on snapshots of direct simulation
+{
+	numi=(i-1)/step+1;
+	aux1[]=MatMass*ua[numi-1][];
+
+	for (int j=1;j<=nbre; j+=step)	// loop on snapshots of adjoint simulation
+	{				                     	  
+	    numj=(j-1)/step+1;
+	    real ps=ua[numj-1][]'*aux1[];
+			      
+	    cout << " i,j = " << i <<"  "<< j << endl;			      
+		{
+			ofstream f(filename,append);
+			f.precision(16);
+			f << ps << endl;	// write gramian coefficient
+		};
+	};
+};

@@ -1,0 +1,20 @@
+include "../Common/intro.edp"
+
+string str="ev_0";
+WV<complex> [u,p];
+{
+ ifstream file(str+".txt");
+ file >> u[];
+}
+
+W xx=x; 
+W<complex> ww=u;
+
+{
+ ofstream file(str+".dat");
+ for(int ii=0; ii<repww.n; ii++)
+ {
+			if(repww[][ii]!=0.)
+				file << xx[][ii] << " " << real(ww[][ii]) << " " << imag(ww[][ii]) << endl;
+ }
+}

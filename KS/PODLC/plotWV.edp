@@ -1,0 +1,20 @@
+include "../Common/intro.edp"
+
+string str="PODMF/mode_5_";
+WV [u,p];
+{
+ ifstream file(str+".txt");
+ file >> u[];
+}
+
+W xx=x; 
+W ww=u;
+
+{
+ ofstream file(str+".rep");
+ for(int ii=0; ii<repww.n; ii++)
+ {
+			if(repww[][ii]!=0.)
+				file << xx[][ii] << " " << ww[][ii] << endl;
+ }
+}

@@ -1,0 +1,194 @@
+		include "../Common/intro.edp"
+
+		// Read initial iteration number
+		int iter;
+		{
+                 ifstream file("iter.txt");
+                 file >> iter;
+        	}
+		
+		// NL=0: linearized simulations, NL=1: non-linear simulations
+		int NL=1;
+		
+		// Read number of iterations to perform and time step
+		real dt;
+		int nbre,step;
+		{
+		 ifstream file("data.txt");
+		 file >> nbre;
+		 file >> dt;
+		 file >> step;
+		};
+				
+		// Initialize main output file
+		string filename2="out_"+iter+".txt";
+		{
+	    ofstream filephi(filename2);
+		};
+
+		real a0,a1,a2,bet0,bet1;
+		a0=1./dt; a1=-1./dt; a2=0; bet0=1.; bet1=0;	// start with first order time integration
+		
+		// Linearized Navier-Stokes operator with time-stepping
+		
+		varf LKS([w,v],[w1,v1])=int1d(th,1)(a0*w*w1+U*dx(w)*w1+mu0*exp(-x^2/d^2)*v*w1-gamma*dx(v)*dx(w1)+dx(w)*dx(v1)+v*v1)+on(4,w=0,v=0);
+
+        matrix MatLKS=LKS(WV,WV,solver=GMRES);
+		{
+				real[int] diagofMatLKS(MatLKS.n);
+				diagofMatLKS=MatLKS.diag;
+				for(int ii=0; ii<MatLKS.n; ii++)
+				{
+					if(repw[][ii]==0.)
+					{
+						diagofMatLKS(ii)=1.e30;
+					}
+				} 
+				MatLKS.diag=diagofMatLKS;
+		}
+		set(MatLKS,solver=sparsesolver);
+
+		// Mass-matrix or scalar-product
+		varf Mass([w,v],[w1,v1])=int1d(th,1)(w*w1);
+		matrix MatMass=Mass(WV,WV,solver=CG);
+		varf Mass2([w,v],[w1,v1])=int1d(th,1)(w*w1+v*v1);
+		matrix MatMass2=Mass2(WV,WV,solver=CG);
+		{
+				real[int] diagofMat(MatMass2.n);
+				diagofMat=MatMass2.diag;
+				for(int ii=0; ii<MatMass2.n; ii++)
+				{
+					if(repw[][ii]==0.)
+					{
+						diagofMat(ii)=1.e30;
+					}
+				} 
+				MatMass2.diag=diagofMat;
+		}
+		set(MatMass2,solver=sparsesolver);
+
+		WV [w,v],[wp,vp],[wpp,vpp],[nlwp,nlvp],[nlwpp,nlvpp],[rhsw,rhsv],[rhsw2,rhsv2];
+		
+		// Non-linear term at the right-hand-side	   
+		varf conv([ww,vv],[w1,v1])=int1d(th,1)(-w*dx(w)*w1);
+		// Non-linear term v2	   
+		varf Derx([ww,vv],[w1,v1])=int1d(th,1)(-w1*dx(ww));
+		matrix MatDerx=Derx(WV,WV,solver=GMRES);
+
+		{
+			ifstream fifi("startvector.txt");
+			fifi >> w[];
+		}
+		
+		{
+				ofstream fifi("mes_"+iter+".txt");
+		}
+		
+		real tps=0;
+		rhsw[]=MatMass*w[];		
+   		real nrjp=w[]'*rhsw[];
+		{
+			ofstream filephi(filename2,append);
+			filephi << tps << " " 
+   				 << nrjp << " "
+				 << w(-10,0.) << " " 
+				 << w(-5,0.) << " " 
+				 << w(0,0.) << " " 
+				 << w(5,0.) << " " 
+				 << w(10,0.) << " "
+				 << w(15,0.) << " "
+				 << w(20,0.) << " "
+				 << w(25,0.) << endl;
+		};
+
+// Time-iteration
+for (int i=iter+1;i<=iter+nbre; i++)
+{
+	    cout << " i = " << i << endl;
+	    cout << " tps = " << tps << endl << endl;
+
+        wpp[]=wp[];
+		wp[]=MatMass*w[];
+		if(NL==1)	// if NL=1, compute non-linear terms
+		{
+			nlwpp[]=nlwp[];
+			rhsw[]=MatDerx*w[];
+			rhsw2[]=MatMass2^-1*rhsw[];
+			rhsw[]=w[].*rhsw2[];
+			nlwp[]=MatMass*rhsw[];
+		}
+             
+		// After five iterations, switch to 2nd order time-scheme
+        if(i==(iter+5))
+        {
+            a0=1.5/dt; a1=-2./dt; a2=0.5/dt; bet0=2; bet1=-1;
+            MatLKS=LKS(WV,WV,solver=GMRES);
+			{
+				real[int] diagofMatLKS(MatLKS.n);
+				diagofMatLKS=MatLKS.diag;
+				for(int ii=0; ii<MatLKS.n; ii++)
+				{
+					if(repw[][ii]==0.)
+					{
+						diagofMatLKS(ii)=1.e30;
+					}
+				} 
+				MatLKS.diag=diagofMatLKS;
+			}
+			set(MatLKS,solver=sparsesolver);
+        }
+		
+		// Build right-hand-side
+        rhsw[]=-a1*wp[]-a2*wpp[];
+		if(NL==1)	// if NL=1, take into account non-linear terms
+			rhsw[]+=bet0*nlwp[]+bet1*nlwpp[];
+        w[]=MatLKS^-1*rhsw[]; // Invert linearized Navier-Stokes matrix
+		tps+=dt; // update current time
+
+		// compute perturbation energy
+   		rhsw[]=MatMass*w[];
+   		real nrjp=w[]'*rhsw[];
+
+		// Write output
+		{
+			ofstream filephi(filename2,append);
+			filephi << tps << " " 
+   				 << nrjp << " "
+				 << w(-10,0.) << " " 
+				 << w(-5,0.) << " " 
+				 << w(0,0.) << " " 
+				 << w(5,0.) << " " 
+				 << w(10,0.) << " "
+				 << w(15,0.) << " "
+				 << w(20,0.) << " "
+				 << w(25,0.) << endl;
+			ofstream fifi("mes_"+iter+".txt",append);
+			fifi << tps;
+			for(real xx=-20; xx<=100; xx+=2)
+			{
+				fifi << " " << w(xx,0);
+			}
+			fifi << endl;
+
+		};
+	
+		if((i%step)==1)
+		{
+		{
+			ofstream fifi("vect2/cbf_"+(100000+i)+"_.txt");
+			fifi << w[] << endl;
+		}
+		
+		rhsw[]=MatDerx*w[];
+		rhsw2[]=MatMass2^-1*rhsw[];
+		rhsw[]=w[].*rhsw2[];
+		{
+			ofstream fifi("vect2nl/nl_"+(100000+i)+"_.txt");
+			fifi << rhsw[] << endl;
+		}
+		{
+			ofstream file("iter.txt");
+			file << i << endl;
+		};
+		}	
+}

@@ -1,0 +1,20 @@
+	include "../Common/intro.edp"
+
+	WV [w,v];
+    {
+		ifstream file("mfcorr.txt");
+		file >> w[];
+    }
+	
+	{
+         ofstream file("startvector.txt");
+         file.precision(16);
+         file << w[] << endl;
+    };
+
+    {
+         ofstream file("iter.txt");
+         file.precision(16);
+         file << 0 << endl;
+    };
+         

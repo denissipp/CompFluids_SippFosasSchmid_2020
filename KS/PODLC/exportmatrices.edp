@@ -1,0 +1,88 @@
+include "../Common/intro.edp"
+	
+varf LNS([w,v],[w1,v1])=int1d(th,1)(-U*dx(w)*w1-mu0*exp(-x^2/d^2)*v*w1+gamma*dx(v)*dx(w1)+dx(w)*dx(v1)+v*v1);
+{
+ matrix MatLNS=LNS(WV,WV,solver=GMRES);
+ {
+  ofstream file("LNS.txt");
+  file.precision(16);
+  file << MatLNS << endl;
+ }
+}
+WV [wm,vm];
+{
+ ifstream file("mfcorr.txt");
+ file >> wm[];
+}
+varf LNSMF([w,v],[w1,v1])=int1d(th,1)(-U*dx(w)*w1-wm*dx(w)*w1-w*dx(wm)*w1-mu0*exp(-x^2/d^2)*v*w1+gamma*dx(v)*dx(w1)+dx(w)*dx(v1)+v*v1);
+{
+ matrix MatLNS=LNSMF(WV,WV,solver=GMRES);
+ {
+  ofstream file("LNSMF.txt");
+  file.precision(16);
+  file << MatLNS << endl;
+ }
+}
+
+varf sec([w,v],[w1,v1])=int1d(th,1)(-U*dx(wm)*w1-mu0*exp(-x^2/d^2)*vm*w1+gamma*dx(vm)*dx(w1)+dx(wm)*dx(v1)+vm*v1-wm*dx(wm)*w1)+on(4,w=0,v=0);
+{
+WV [rhsu,rhsv];
+rhsu[]=sec(0,WV);
+ {
+  ofstream file("offset.txt");
+  file.precision(16);
+  file << rhsu[] << endl;
+ }
+}
+varf derx([a,b],[v1,v2])
+= int1d(th,1)(-v1*dx(a));
+matrix MatDerx=derx(WV,WV,solver=GMRES);
+
+varf Mass([w,v],[w1,v1])=int1d(th,1)(w*w1);
+matrix MassMat=Mass(WV,WV,solver=GMRES);
+
+varf Mass2([w,v],[w1,v1])=int1d(th,1)(w*w1+v*v1);
+matrix MassMat2=Mass2(WV,WV,solver=GMRES);
+{
+				real[int] diagofMat(MassMat2.n);
+				diagofMat=MassMat2.diag;
+				for(int ii=0; ii<MassMat2.n; ii++)
+				{
+					if(repw[][ii]==0.)
+					{
+						diagofMat(ii)=1.e30;
+					}
+				} 
+				MassMat2.diag=diagofMat;
+		}
+
+{
+ ofstream file("M.txt");
+ file.precision(16);
+ file << MassMat << endl;
+}
+
+{
+ ofstream file("M2.txt");
+ file.precision(16);
+ file << MassMat2 << endl;
+}
+
+{
+ ofstream file("DerX.txt");
+ file.precision(16);
+ file << MatDerx << endl;
+}
+
+WV [ub1,pb]=[1,2];
+{
+ ofstream file("structfem.txt");
+ file << ub1[] << endl;
+}
+[ub1,pb]=[x,x];
+{
+ ofstream file("x.txt");
+ file << ub1[] << endl;
+}
+
+	

@@ -1,0 +1,32 @@
+	include "../Common/intro.edp"
+
+	WV<complex> [w,v];
+    {
+		ifstream file("../Eigs/ev_0.txt");
+		file >> w[];
+    }
+	WV [wr,wi];
+	W ww;
+	
+	wr[]=w[].re;
+	ww=wr;
+	real wmax=max(abs(ww[].max),abs(ww[].min));
+	cout << "wmax=" << wmax << endl;
+	
+	wr[]*=0.01/wmax;
+	ww=wr;
+	wmax=max(abs(ww[].max),abs(ww[].min));
+	cout << "wmax=" << wmax << endl;
+	
+	{
+         ofstream file("startvector.txt");
+         file.precision(16);
+         file << wr[] << endl;
+    };
+
+    {
+         ofstream file("iter.txt");
+         file.precision(16);
+         file << 0 << endl;
+    };
+         

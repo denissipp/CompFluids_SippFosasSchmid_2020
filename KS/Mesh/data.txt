@@ -1,0 +1,3 @@
+		real xmin=-100.;
+		real xmax=100;
+		real deltax=0.05;

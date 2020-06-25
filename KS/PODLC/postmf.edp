@@ -1,0 +1,21 @@
+include "../Common/intro.edp"
+
+string mf;
+{
+ ifstream file("mf.txt");
+ file >> mf;
+}
+
+WV [um,pm];
+	{
+		ifstream file(mf); 
+		file >> um[];
+	};    
+ofstream fifi("mesmf.txt");
+fifi.precision(16);
+{
+			for(real xx=-20; xx<=100; xx+=2)
+			{
+				fifi << um(xx,0) << endl;
+			}
+};	

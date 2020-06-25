@@ -1,0 +1,20 @@
+		load "MUMPS_seq"
+		defaulttoMUMPSseq();
+
+		verbosity=3;
+
+        mesh th=readmesh("../Mesh/mesh.msh");
+
+		fespace WV(th,[P2,P2]);
+		fespace W(th,P2);
+
+		include "../Mesh/data.txt";
+		WV [repw,repv]=[(abs(y)<deltax/10.),(abs(y)<deltax/10.)];		
+		W repww=(abs(y)<deltax/10.);		
+
+		real U=1;
+		real d=1;
+		real gamma=1.;		
+		real mu0=3.95;
+		cout << "gamma=" << gamma << endl;
+		cout << "mu0=" << mu0 << endl;
