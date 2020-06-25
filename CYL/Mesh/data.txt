@@ -1,0 +1,12 @@
+		real l2=25; 	// position of outlet boundary				
+		real l1=10; 	// position of inlet boundary
+		real h1=7;		// position of upper boundary
+		real l2b=10; 	// right inner boundary
+		real l1b=3; 	// left inner boundary				
+		real h1b=1.5;	// upper inner boundary
+		real h1bb=3;	// upper inner boundary 2
+
+		real x0=0.;	 	// centre of cylinder
+		real y0=0.;		// centre of cylinder
+		real rayonx=0.5;	// radius of cylinder
+		real rayony=0.5; 	// radius of cylinder

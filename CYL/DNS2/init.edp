@@ -1,0 +1,23 @@
+	include "../Common/intro.edp"
+	Uvvp<complex> [u,v,p];
+    {
+		ifstream file("../Eigs/ev1.txt");
+		file >> u[];
+    }
+	
+	real ener=int2d(th)(abs(u)^2+abs(v)^2);
+        cout << ener << endl;
+	u[]*=0.06/sqrt(ener);	// for non-linear simulations
+	
+    {
+         ofstream file("startvector.txt");
+         file.precision(16);
+         file << u[].re << endl;
+    };
+
+    {
+         ofstream file("iter.txt");
+         file.precision(16);
+         file << 0 << endl;
+    };
+         

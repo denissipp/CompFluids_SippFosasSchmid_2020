@@ -1,0 +1,10 @@
+include "../Common/intro.edp"
+
+Uvvp [u,v,p];
+{
+ ifstream file("cbf.txt");
+ file >> u[];
+}
+plot(u,wait=1,value=1);
+plot(v,wait=1,value=1);
+plot(p,wait=1,value=1);

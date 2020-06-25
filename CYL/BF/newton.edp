@@ -1,0 +1,89 @@
+		include "../Common/intro.edp"
+
+		// Read target Reynolds number
+        {
+		 ifstream file("param.txt");
+		 file >> Re;
+        }
+		real nu=1./Re;
+		
+		// Read initial guess-value for Newton method
+		Uvvp [ub1,ub2,pb];
+		{
+		 ifstream fifi("cbf.txt");
+                 fifi >> ub1[];
+        };
+		
+		// Output file for convergence history 
+		ofstream fileout("newton_"+Re+".txt");
+		
+		// 2-norm of delta u within Newton iteration
+		real normdu=1; 
+
+		int i=0;
+		// Newton interations
+		while((normdu>1.e-14)&(i<=10)) // Loop until normdu<=1.e-14 or i>10
+ 		{
+		  // Build Linearized Navier-Stokes matrix
+          matrix NSMAT; // Linearized Navier-Stokes matrix
+		  {
+		   varf LNS([du1,du2,dp],[v1,v2,q])=
+    		   int2d(th)(
+            		+ nu*(dx(du1)*dx(v1)+dy(du1)*dy(v1)
+            		     +dx(du2)*dx(v2)+dy(du2)*dy(v2))
+			+ v1*(du1*dx(ub1)+du2*dy(ub1)+ub1*dx(du1)+ub2*dy(du1))
+			+ v2*(du1*dx(ub2)+du2*dy(ub2)+ub1*dx(du2)+ub2*dy(du2))
+            		- dp*(dx(v1)+dy(v2))
+            		+ q*(-dx(du1)-dy(du2)))
+  		   +on(1,du1=1.-ub1,du2=-ub2)
+  		   +on(2,du1=-ub1,du2=-ub2)
+		   +on(4,du2=-ub2);
+           NSMAT=LNS(Uvvp,Uvvp,solver=sparsesolver); 
+          };
+		  
+		  // Build residual evaluation
+		  Uvvp [r1,r2,r3]; // Residual
+		  {
+		   varf SMNS([du1,du2,dp],[v1,v2,q])=
+                   int2d(th)(
+                        - nu*(dx(ub1)*dx(v1)+dy(ub1)*dy(v1)
+                             +dx(ub2)*dx(v2)+dy(ub2)*dy(v2))
+                        - v1*(ub1*dx(ub1)+ub2*dy(ub1))
+                        - v2*(ub1*dx(ub2)+ub2*dy(ub2))
+            		    + pb*(dx(v1)+dy(v2))
+			            - q*(-dx(ub1)-dy(ub2)))
+  		  +on(1,du1=1.-ub1,du2=-ub2)
+  		  +on(2,du1=-ub1,du2=-ub2)
+		  +on(4,du2=-ub2);
+
+		   r1[]=SMNS(0,Uvvp);
+           cout    << Re << " " << i << " " << r1[].linfty << " " << r1[].l2;
+		   fileout << Re << " " << i << " " << r1[].linfty << " " << r1[].l2;
+          };
+		  
+		  // Inversion to obtain base-flow correction delta u 
+		  {
+		   Uvvp [du1,du2,dp];
+           du1[]=NSMAT^-1*r1[];
+		   normdu=sqrt(int2d(th)(du1^2+du2^2)/th.area);
+           cout    << " " << normdu << endl;
+		   fileout << " " << normdu << endl;
+		   ub1[]+=du1[];
+		  };
+		  
+		  // Save new solution
+		  {
+		   ofstream file("cb_"+Re+".txt");
+           file.precision(16);
+		   file << ub1[];
+          };
+		  i++;
+		};
+		
+		// Save final solution
+		{
+		  ofstream file("cbf.txt");
+                  file.precision(16);
+		  file << ub1[];
+        };
+ 

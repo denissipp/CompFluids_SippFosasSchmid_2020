@@ -1,0 +1,24 @@
+include "../Common/intro.edp"
+
+// Print number of unstable modes defined in "../Common/intro.edp" 
+cout << "Number of unstable modes=" << unstable << endl;
+
+Uvvp<complex> [ud,vd,pd];
+Uvvp<complex> [ua,va,pa];
+		
+for(int ii=0; ii<unstable; ii++)
+{
+	ifstream file("ev"+(ii)+".txt"); 				// Read direct mode
+    file >> ud[];
+    ifstream file2("ea"+(ii)+".txt"); 				// Read adjoint mode
+    file2 >> ua[];
+
+    complex ps=int2d(th)(conj(ua)*ud+conj(va)*vd);	// Scalar product between adjoint and direct modes
+	cout << "ps=" << ps << endl;
+	ua[]*=1./conj(ps);								// normalize adjoint
+	ps=int2d(th)(conj(ua)*ud+conj(va)*vd);			// New scalar product (to check)
+	cout << "ps=" << ps << endl;					  
+    ofstream file3("ea_scaled"+(ii)+".txt");		// Save new adjoint eigenvector
+	file3.precision(16);
+    file3 << ua[] << endl;
+};

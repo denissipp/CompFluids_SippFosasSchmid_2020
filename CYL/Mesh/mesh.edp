@@ -1,0 +1,44 @@
+                include "data.txt" // configuration, definition of constants, radius=..., position
+
+                border b1(t=-pi/2,pi/2){x=x0+rayonx*cos(t); y=y0+rayony*sin(t);label=2;}; // Cylinder
+                border b2(t=pi/2,3*pi/2){x=x0+rayonx*cos(t); y=y0+rayony*sin(t);label=2;};
+				
+				
+                border da(t=h1,h1bb){ x=-l1; y=t;label=1;}; // Inflow
+                border db(t=h1bb,0){ x=-l1; y=t;label=1;};
+				border db2(t=0,-h1bb){ x=-l1; y=t;label=1;};
+                border dc(t=-h1bb,-h1){ x=-l1; y=t;label=1;};
+				
+                border e(t=-l1,l2){ x=t; y=-h1;label=4;}; // Lower boundary
+				
+				border baa(t=-h1,-h1bb){ x=l2; y=t; label=3; }; // Outflow
+                border ba(t=-h1bb,0){ x=l2; y=t; label=3; };
+                border ba2(t=0,h1bb){ x=l2; y=t; label=3; };
+                border bb(t=h1bb,h1){ x=l2; y=t; label=3; };
+
+				border c(t=l2,-l1){ x=t; y=h1;label=4;}; // Upper boundary
+
+
+                border c2(t=-h1b,h1b){x=l2b;y=t; label=5;}; // Inner boundaries
+                border c3(t=l2b,-l1b){x=t;y=h1b; label=5;};
+                border c4(t=h1b,-h1b){x=-l1b;y=t; label=5;};
+                border c5(t=-l1b,l2b){x=t;y=-h1b; label=5;};
+                border g(t=l2,-l1){x=t; y=h1bb; label=5;};
+                border h(t=-l1,l2){x=t; y=-h1bb; label=5;};
+
+				border c6(t=-l1,-l1b){ x=t; y=0;label=6;}; // Symmetry plane
+				border c7(t=-l1b,x0-rayonx){ x=t; y=0;label=6;}; // 
+				border c8(t=x0+rayonx,l2b){ x=t; y=0;label=6;}; // 
+				border c9(t=l2b,l2){ x=t; y=0;label=6;}; // 
+
+                int l=1; //mesh densities
+                int m=4; // mesh densities
+                int o=10; // mesh densities
+
+                mesh th= buildmesh(c2(2*h1b*o)+c3((l2b+l1b)*o)+c4(2*h1b*o)+c5((l2b+l1b)*o)+c6((-l1b+l1)*m)+c7((x0-rayonx+l1b)*o)+c8((l2b-x0-rayonx)*o)+c9((l2b-(x0+rayonx))*o)+g((l2+l1)*m)+h((l2+l1)*m)
+				+c((l1+l2)*l)+da((h1-h1bb)*l)+db(h1bb*m)+db2(h1bb*m)+dc((h1-h1bb)*l)+e((l1+l2)*l)+baa((h1-h1bb)*l)+ba(h1bb*m)+ba2(h1bb*m)+bb((h1-h1bb)*l)
+				+b1(-0.5*pi*o)+b2(-0.5*pi*o)); // generate mesh
+				
+                plot(th,wait=1);
+
+                savemesh(th,"mesh.msh"); // same mesh

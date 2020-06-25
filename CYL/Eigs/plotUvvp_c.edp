@@ -1,0 +1,16 @@
+include "../Common/intro.edp";
+
+Uvvp<complex> [u,v,p];
+{
+ ifstream file("ev0.txt");
+ file >> u[];
+}
+
+Uv uu;
+uu=real(u); plot(uu,wait=1,value=1,fill=1);
+uu=real(v); plot(uu,wait=1,value=1,fill=1);
+uu=imag(u); plot(uu,wait=1,value=1,fill=1);
+uu=imag(v); plot(uu,wait=1,value=1,fill=1);
+Up pp;
+pp=real(p); plot(pp,wait=1,value=1,fill=1);
+pp=imag(p); plot(pp,wait=1,value=1,fill=1);

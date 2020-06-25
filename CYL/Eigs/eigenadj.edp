@@ -1,0 +1,107 @@
+include "../Common/intro.edp"
+
+// Reynolds number defined in "../Common/intro.edp" 
+cout << "Re = " << Re << endl;
+cout << endl;
+real nu=1./Re;
+
+// shift for eigenvalue solver
+complex sigma=0.1-1i*0.77; 
+
+// Read and plot base-flow
+Uvvp [ub1,ub2,pb];
+{
+ ifstream file("../BF/cbf.txt");
+ file >> ub1[];
+};
+plot(ub1,value=1,wait=1);
+plot(ub2,value=1,wait=1);
+
+// Definition and building of matrix B (mass-matrix)
+cout << "Matrix B" << endl;
+varf b([u1,u2,p],[v1,v2,q])=int2d(th)(u1*v1+u2*v2);
+matrix<complex> B= b(Uvvp,Uvvp,solver=CG); 
+
+// Quantities needed for eigenvalue solver
+int nev=2;
+complex[int] ev(nev); // to store nev eigenvalues 
+Uvvp<complex>[int] [eVu,eVv,eVp](nev);   // to store nev eigenvectors  
+int k; // number of converged eigenvalues 
+
+// Definition of Ashifted, computation of eigenvalues
+{
+	varf aShifted([du1,du2,dp],[v1,v2,q]) = // Shifted matrix
+		int2d(th)(
+		-((-ub1*dx(du1)+du1*dx(ub1)-ub2*dy(du1)+du2*dx(ub2))*v1)
+        -((-ub1*dx(du2)+du1*dy(ub1)-ub2*dy(du2)+du2*dy(ub2))*v2)
+        - nu*(dx(du1)*dx(v1)+dy(du1)*dy(v1))
+        - nu*(dx(du2)*dx(v2)+dy(du2)*dy(v2))
+        + dp*(dx(v1)+dy(v2))
+        + (-dx(du1)-dy(du2))*q
+		-sigma*(du1*v1+du2*v2))
+		-int1d(th,3)(du1*v1*ub1+du2*v2*ub1)
+  		+on(1,2,du1=0.,du2=0.)
+		+on(4,du2=0.);
+
+	cout << "Building matrix As" << endl;
+	matrix<complex> As= aShifted(Uvvp,Uvvp,solver=GMRES);
+	cout << "LU decompostion of As" << endl;
+	set(As,solver=sparsesolver); 
+
+	cout << "Eigenvalue solve" << endl;
+	k=EigenValue(As,B,sigma=sigma,value=ev,vector=eVu,tol=1e-10,maxit=90000,ncv=10);
+	k=min(k,nev);	//  some time the number of converged eigen value 
+					// can be greater than nev;
+};
+
+// Quantities to check validity of eigenvectors
+varf a([du1,du2,dp],[v1,v2,q]) =
+     int2d(th)(
+	 	-((-ub1*dx(du1)+du1*dx(ub1)-ub2*dy(du1)+du2*dx(ub2))*v1)
+        -((-ub1*dx(du2)+du1*dy(ub1)-ub2*dy(du2)+du2*dy(ub2))*v2)
+        - nu*(dx(du1)*dx(v1)+dy(du1)*dy(v1))
+        - nu*(dx(du2)*dx(v2)+dy(du2)*dy(v2))
+        + dp*(dx(v1)+dy(v2))
+        + (dx(du1)+dy(du2))*q)
+		- int1d(th,3)(du1*v1*ub1+du2*v2*ub1)
+  		+ on(1,2,du1=0.,du2=0.)
+		+ on(4,du2=0.);
+cout << "Building matrix A" << endl;
+matrix<complex> A=a(Uvvp,Uvvp,solver=GMRES); 
+
+// file to store eigenvalues
+ofstream file("vpa.txt");
+file.precision(16);
+
+// Loop on converged eigenvalues
+for (int kk=0;kk<k;kk++)
+{
+	// Extract kkth eigenvalue/eigenvector
+	Uvvp<complex> [u1,v1,p1];
+	[u1,v1,p1]=[eVu[kk],eVv[kk],eVp[kk]];	
+	complex v=ev[kk];
+
+	// Check validity of eigenvalue/eigenvector
+	real err;
+	{
+		int n=Uvvp.ndof;	
+		complex[int] Bu1(n),Au1(n);
+		Bu1=B*u1[]; Bu1*=v;
+		Au1=A*u1[];
+		Au1-=Bu1;
+		err=Au1.l2/u1[].l2;
+	};
+  
+	// Save kkth eigenvector and error norm
+	file << real(v) << " " << imag(v) << " " << kk << " " << err << endl;
+
+	// Save kkth eigenvector
+	{
+		ofstream fifi("ea"+kk+".txt");
+		fifi.precision(16);
+		fifi << eVu[kk][] << endl;
+	}
+	
+	// Plot kkth eigenvector
+	plot(eVu[kk],dim=3,fill=1,wait=1);
+}

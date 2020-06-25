@@ -1,0 +1,16 @@
+		load "MUMPS_seq"
+		defaulttoMUMPSseq();
+
+		verbosity=3;
+
+        mesh th=readmesh("../Mesh/mesh.msh");
+
+		fespace Up(th,P1);
+		fespace Uv(th,P1b);
+		fespace Uvvp(th,[P1b,P1b,P1]);
+		fespace Uvvvp(th,[P1b,P1b,P1b,P1]);
+
+        	real Re=100;
+		int unstable=1;
+		
+		real wc=0.;

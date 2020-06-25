@@ -1,0 +1,9 @@
+include "../Common/intro.edp";
+
+Uvvp [u,v,p];
+u[]=0;
+
+{
+ ofstream file("cbf.txt");
+ file << u[];
+}
