@@ -1,0 +1,123 @@
+include "../Common/intro.edp"
+cout << "Re=" << Re << endl;
+	
+Uvvp [ub1,ub2,pb];
+{
+	ifstream file("../BF/cbf.txt");	// load base-flow
+	file >> ub1[];
+};
+
+real nu=1./Re;
+varf LNS([u1,u2,p],[v1,v2,q])	// Linearized Navier-Stokes operator. Fully implicit, no constraint on cfl number
+= int2d(th)(
+	-nu*(dx(u1)*dx(v1)+dy(u1)*dy(v1)+dx(u2)*dx(v2)+dy(u2)*dy(v2))
+	-v1*(u1*dx(ub1)+u2*dy(ub1)+ub1*dx(u1)+ub2*dy(u1))
+	-v2*(u1*dx(ub2)+u2*dy(ub2)+ub1*dx(u2)+ub2*dy(u2))
+	+p*(dx(v1)+dy(v2))
+	+q*(dx(u1)+dy(u2)));
+{
+ matrix MatLNS=LNS(Uvvp,Uvvp,solver=GMRES);
+ {
+  ofstream file("LNS.txt");
+  file.precision(16);
+  file << MatLNS << endl;
+ }
+}
+
+{
+ {
+ Uvvp [um,vm,pm];
+	{
+		ifstream file("mfcorr.txt"); 
+		file >> um[];
+	};    
+ ub1[]+=um[];
+ }
+ matrix MatLNS=LNS(Uvvp,Uvvp,solver=GMRES);
+ {
+  ofstream file("LNSMF.txt");
+  file.precision(16);
+  file << MatLNS << endl;
+ }
+}
+    varf sec([du1,du2,dp],[v1,v2,q])=int2d(th)(
+                        - nu*(dx(ub1)*dx(v1)+dy(ub1)*dy(v1)
+                             +dx(ub2)*dx(v2)+dy(ub2)*dy(v2))
+                        - v1*(ub1*dx(ub1)+ub2*dy(ub1))
+                        - v2*(ub1*dx(ub2)+ub2*dy(ub2))
+            		+ pb*(dx(v1)+dy(v2))
+            		+ q*(dx(ub1)+dy(ub2)))
+  		   +on(1,2,du1=0,du2=0)
+		   +on(4,du2=0);
+{
+Uvvp [rhsu,rhsv,rhsp];
+rhsu[]=sec(0,Uvvp);
+plot(rhsu,wait=1,value=1);
+plot(rhsv,wait=1,value=1);
+plot(rhsp,wait=1,value=1);
+ {
+  ofstream file("offset.txt");
+  file.precision(16);
+  file << rhsu[] << endl;
+ }
+}
+varf derx([a,b,c],[v1,v2,q])
+= int2d(th)(-v1*dx(a)-v2*dx(b));
+matrix MatDerx=derx(Uvvp,Uvvp,solver=GMRES);
+
+varf dery([a,b,c],[v1,v2,q])
+= int2d(th)(-v1*dy(a)-v2*dy(b));
+matrix MatDery=dery(Uvvp,Uvvp,solver=GMRES);
+
+varf Mass([u1,u2,p],[v1,v2,q])	// mass matrix
+= int2d(th)(u1*v1+u2*v2);
+	
+varf Mass2([u1,u2,p],[v1,v2,q])	// mass matrix
+= int2d(th)(u1*v1+u2*v2+p*q);
+
+matrix MassMat=Mass(Uvvp,Uvvp,solver=GMRES);
+matrix MassMat2=Mass2(Uvvp,Uvvp,solver=GMRES);
+
+{
+ ofstream file("M.txt");
+ file.precision(16);
+ file << MassMat << endl;
+}
+
+{
+ ofstream file("M2.txt");
+ file.precision(16);
+ file << MassMat2 << endl;
+}
+
+{
+ ofstream file("DerX.txt");
+ file.precision(16);
+ file << MatDerx << endl;
+}
+
+{
+ ofstream file("DerY.txt");
+ file.precision(16);
+ file << MatDery << endl;
+}
+
+[ub1,ub2,pb]=[1,2,3];
+{
+ ofstream file("structfem.txt");
+ file << ub1[] << endl;
+}
+[ub1,ub2,pb]=[x,x,x];
+{
+ ofstream file("x.txt");
+ file << ub1[] << endl;
+}
+[ub1,ub2,pb]=[y,y,y];
+{
+ ofstream file("y.txt");
+ file << ub1[] << endl;
+}
+Uv xx=x;
+cout << xx[].max << " " << xx[].min << endl;
+
+	

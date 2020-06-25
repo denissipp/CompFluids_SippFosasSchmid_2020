@@ -1,0 +1,200 @@
+		include "../Common/intro.edp"
+
+		// Read initial iteration number
+		int iter;
+		{
+                 ifstream file("iter.txt");
+                 file >> iter;
+        }
+		
+		// NL=0: linearized simulations, NL=1: non-linear simulations
+		int NL=1;
+		
+		// Read number of iterations to perform and time step
+		real dt;
+		int nbre,step;
+		{
+		 ifstream file("data.txt");
+		 file >> nbre;
+		 file >> dt;
+		 file >> step;
+		};
+		// Molecular kinematic viscosity
+		real nu=1./Re;
+
+		Uvvp [u1,u2,p];			// current flowfield
+		Uvvp [u1m,u2m,pm];			// current flowfield
+		Uvvp [up1,up2,pp];		// flowfield at previous time-step
+		Uvvp [upp1,upp2,ppp];	// flowfield at previous previous time-step
+		Uvvp [sm1,sm2,sm3];
+		Uvvp [nlp1,nlp2,nlpp];	//	non-linear right-hand-side at previous time-step  
+		Uvvp [nlpp1,nlpp2,nlppp];	//	non-linear right-hand-side at previous previous time-step
+		Uvvp [aux1,aux2,aux3];
+		Uvvp [auy1,auy2,auy3];
+		Uvvp [auz1,auz2,auz3];
+		
+		real tps=iter*dt;			// current time
+        real a0,a1,a2,bet0,bet1;	// coefficient for time-integration scheme
+
+	ofstream file5("vect2m/decomp.txt");
+	// Read base-flow (the code is written in perturbative form)
+	Uvvp [ub1,ub2,pb];
+	ifstream file("../BF/cbf.txt");
+	file >> ub1[];
+
+    a0=1./dt; a1=-1./dt; a2=0; bet0=1; bet1=0;	// coefficients for first-order in time integration
+
+	// Linearized Navier-Stokes operator with time-stepping
+	varf NS([du1,du2,dp],[v1,v2,q])=
+    		   int2d(th)(
+ 	    	      (a0*du1*v1 + a0*du2*v2) 
+            		+ nu*(dx(du1)*dx(v1)+dy(du1)*dy(v1)
+            		     +dx(du2)*dx(v2)+dy(du2)*dy(v2))
+			+ v1*(du1*dx(ub1)+du2*dy(ub1)+ub1*dx(du1)+ub2*dy(du1))
+			+ v2*(du1*dx(ub2)+du2*dy(ub2)+ub1*dx(du2)+ub2*dy(du2))
+            		- dp*(dx(v1)+dy(v2))
+            		+ q*(-dx(du1)-dy(du2)))
+  		   +on(1,2,du1=0,du2=0)
+		   +on(4,du2=0);
+    matrix A=NS(Uvvp,Uvvp,solver=sparsesolver);
+
+	// Non-linear term at the right-hand-side	   
+    varf sm([du1,du2,dp],[v1,v2,q])=
+		 int2d(th) (-v1*(u1*dx(u1)+u2*dy(u1))
+                    -v2*(u1*dx(u2)+u2*dy(u2)))
+  		   +on(1,2,du1=0,du2=0)
+		   +on(4,du2=0);
+// Non-linear term	   
+varf derx([a,b,c],[v1,v2,q])
+= int2d(th)(-v1*dx(a)-v2*dx(b));
+varf dery([a,b,c],[v1,v2,q])
+= int2d(th)(-v1*dy(a)-v2*dy(b));
+
+matrix MatDerx=derx(Uvvp,Uvvp);
+matrix MatDery=dery(Uvvp,Uvvp);
+		   
+	// Mass-matrix or scalar-product	
+    varf Pscal([du1,du2,dp],[v1,v2,q])
+          =int2d(th)(du1*v1+du2*v2);
+	matrix MatPscal=Pscal(Uvvp,Uvvp,solver=CG);
+
+	// Check CFL number and mesh Reynolds-number
+    {
+      Uv cfl=sqrt(ub1^2+ub2^2)*dt/hTriangle;
+      Uv rem=sqrt(ub1^2+ub2^2)*hTriangle/nu;
+      cout << "cfl max=" << cfl[].max << endl;
+      cout << "rem max=" << rem[].max << endl;
+      plot(cfl,wait=1,value=1,fill=1);
+      plot(rem,wait=1,value=1,fill=1);
+    }
+varf Mass2([u1,u2,p],[v1,v2,q])	// mass matrix
+= int2d(th)(u1*v1+u2*v2+p*q);
+matrix MassMat2=Mass2(Uvvp,Uvvp,solver=CG);
+Uvvp<complex>[int] [ud,vd,pd](unstable);	// direct unstable modes
+Uvvp<complex>[int] [ua,va,pa](unstable);	// adjoint unstable modes
+		
+// Read direct and adjoint global modes
+for(int ii=0; ii<unstable; ii++)
+{
+	ifstream file("../Eigs/ev"+ii+".txt");
+	file >> ud[ii][];
+
+	ifstream file2("../Eigs/ea_scaled"+ii+".txt");
+	file2 >> ua[ii][];
+	cout << "mode"+ii+":" << int2d(th)(conj(ua[ii])*ud[ii]+conj(va[ii])*vd[ii]) << endl; 
+};
+
+	// Initialize main output file
+	string filename2="out2m_"+iter+".txt";
+    {
+	    ofstream filephi(filename2);
+	};
+
+	// Read initial condition for flowfield
+	if(iter==0)
+	{
+		ifstream file("../DNS2/vect2/cbf_120001_.txt");
+		file >> u1[];
+	}
+    else
+    {
+		ifstream file("vect2m/utot_"+iter+".txt");
+		file >> u1[];
+    };
+
+	u1m[]=u1[]; 
+	real u2ref=u2(1.,0.);
+
+	real su2last=0;
+
+	// Time-iteration
+	for (int i=iter+1;i<=iter+nbre; i++)
+ 	{
+	    cout << " i = " << i << endl;
+	    cout << " tps = " << tps << endl << endl;
+
+        upp1[]=up1[];
+        up1[]=MatPscal*u1[];
+		if(NL==1)	// if NL=1, compute non-linear terms
+		{
+			nlpp1[]=nlp1[];
+
+			aux1[]=MatDerx*u1[];
+			auy1[]=MassMat2^-1*aux1[];
+			[sm1,sm2,sm3]=[u1,u1,0];
+			auz1[]=sm1[].*auy1[];
+
+			aux1[]=MatDery*u1[];
+			auy1[]=MassMat2^-1*aux1[];
+			[sm1,sm2,sm3]=[u2,u2,0];
+			auz1[]+=sm1[].*auy1[];
+
+			nlp1[]=MatPscal*auz1[];
+		}
+             
+		// After five iterations, switch to 2nd order time-scheme
+        if(i==(iter+5))
+        {
+            a0=1.5/dt; a1=-2./dt; a2=0.5/dt; bet0=2; bet1=-1;
+            A=NS(Uvvp,Uvvp,solver=sparsesolver);
+        }
+
+		// Build right-hand-side
+        sm1[]=-a1*up1[]-a2*upp1[];
+		if(NL==1)	// if NL=1, take into account non-linear terms
+			sm1[]+=bet0*nlp1[]+bet1*nlpp1[];
+
+        u1[]=A^-1*sm1[]; // Invert linearized Navier-Stokes matrix
+
+		tps+=dt; // update current time
+
+	sm1[]=real(i)*u1m[]+u1[];
+	u1m[]=(1./real(i+1))*sm1[];
+
+		// compute perturbation energy
+   		sm1[]=MatPscal*u1[];
+   		real nrjp=u1[]'*sm1[];
+
+		// Write output
+		{
+			ofstream filephi(filename2,append);
+			filephi << tps << " " 
+   				 << nrjp << " "
+				 << u1(1.,0.) << " " 
+				 << u2(1.,0.) << " " 
+				 << u1(5.,0.) << " "  
+				 << u2(5.,0.) << " "  
+				 << su2last << endl;  
+		};
+
+
+	if(su2last==0)
+         su2last=(u2(1.,0.)-u2ref)/abs(u2(1.,0.)-u2ref);
+        else if((u2(1.,0.)-u2ref)*su2last<0)
+        {
+		ofstream file("vect2m/cbfm_"+(100000+i)+"_.txt");
+		file.precision(16);
+		file << u1m[] << endl;
+		su2last*=-1;
+	}
+};

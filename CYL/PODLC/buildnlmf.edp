@@ -1,0 +1,68 @@
+include "../Common/intro.edp"
+real dt;
+int nbre,step;
+{
+	ifstream file("data2.txt");
+	file >> nbre;	// number of iterations in direct and adjoint simulation
+	file >> dt;		// time-step
+	file >> step;	// number of time-steps between two snapshots
+};	
+int ns=(nbre-1)/step+1;	// number of snapshots
+int in;
+{
+	ifstream file("init.txt");
+	file >> in;	// number of iterations in direct and adjoint simulation
+};	
+
+Uvvp [um,vm,pm];
+	{
+		ifstream file("mfcorr.txt"); 
+		file >> um[];
+	};    
+
+string dir="../DNS2/vect2/cbf";
+string dir2="vect2nlmf/nl";
+
+Uvvp [u1,u2,p];
+Uvvp [ua,va,pa];
+Uvvp [aux1,aux2,aux3];
+Uvvp [auy1,auy2,auy3];
+Uvvp [sm1,sm2,sm3];
+		
+varf Mass([v1,v2,v3],[w1,w2,w3])=int2d(th)(v1*w1+v2*w2+v3*w3);	// mass-matrix
+matrix MassMat2=Mass(Uvvp,Uvvp,solver=CG);
+varf derx([a,b,c],[v1,v2,q])
+= int2d(th)(-v1*dx(a)-v2*dx(b));
+varf dery([a,b,c],[v1,v2,q])
+= int2d(th)(-v1*dy(a)-v2*dy(b));
+
+matrix MatDerx=derx(Uvvp,Uvvp);
+matrix MatDery=dery(Uvvp,Uvvp);
+	
+int numj;
+for (int j=1;j<=nbre; j+=step)	// loop to read all snapshots of adjoint simulation
+{
+	numj=(j-1)/step+1;
+	cout << endl << j << "   " << numj-1 << endl;	
+	{
+		ifstream file(dir+"_"+(100000+j+in)+"_.txt"); 
+		file >> u1[];
+	};
+	u1[]-=um[];
+    
+	aux1[]=MatDerx*u1[];
+	auy1[]=MassMat2^-1*aux1[];
+	[sm1,sm2,sm3]=[u1,u1,0];
+	ua[]=sm1[].*auy1[];
+
+	aux1[]=MatDery*u1[];
+	auy1[]=MassMat2^-1*aux1[];
+	[sm1,sm2,sm3]=[u2,u2,0];
+	ua[]+=sm1[].*auy1[];
+	{
+		ofstream file(dir2+"_"+(100000+j+in)+"_.txt"); 
+		file.precision(16);
+		file << ua[] << endl;
+	};    
+};	
+

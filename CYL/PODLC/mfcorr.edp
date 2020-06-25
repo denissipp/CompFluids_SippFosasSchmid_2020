@@ -1,0 +1,14 @@
+include "../Common/intro.edp"
+Uvvp [um,vm,pm];
+{
+	ifstream file("POD/mode_1_.txt"); 
+	file >> um[];
+};    
+um[]*=-2.2;
+
+
+{
+	ofstream file("mfcorr.txt");
+	file.precision(16); 
+	file << um[];
+};    

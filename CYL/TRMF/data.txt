@@ -1,0 +1,6 @@
+20001
+0.01
+5
+// number of time steps / time step
+// Time-step for non-linear simulations 0.04
+// Time-step for linear simulations 0.1

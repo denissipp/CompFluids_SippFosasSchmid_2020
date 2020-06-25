@@ -1,0 +1,34 @@
+include "../Common/intro.edp"
+real dt;
+int nbre,step,numpod;
+{
+	ifstream file("data2.txt");
+	file >> nbre;	// number of iterations in direct and adjoint simulation
+	file >> dt;		// time-step
+	file >> step;	// number of time-steps between two snapshots
+	file >> numpod;	// number of time-steps between two snapshots
+};	
+
+Uvvp[int] [ud,vd,pd](numpod);
+		
+for (int j=1;j<=numpod; j+=1)	// loop to read all snapshots of adjoint simulation
+{
+	cout << j << endl;	
+	{
+		ifstream file("POD/mode_"+j+"_.txt"); 
+		file >> ud[j-1][];
+	};
+}
+ofstream fifi("mespod.txt");
+fifi.precision(16);
+for(int j=1; j<=numpod; j+=1)
+{
+	for(real xx=1; xx<=20; xx+=2)
+	{
+	  for(real yy=-2; yy<=2.01; yy+=1)
+	  {
+		fifi << ud[j-1](xx,yy) << endl;
+		fifi << vd[j-1](xx,yy) << endl;
+	  }
+	}
+};	

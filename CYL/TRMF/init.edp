@@ -1,0 +1,25 @@
+	include "../Common/intro.edp"
+	Uvvp [u,v,p];
+    {
+		ifstream file("mfcorr.txt");
+		file >> u[];
+    }
+	
+    {
+         ofstream file("startvector.txt");
+         file.precision(16);
+         file << u[] << endl;
+    };
+			cout << 0. << " " 
+   				 << int2d(th)(u^2+v^2) << " "
+				 << u(1.,0.) << " " 
+				 << u(1.,0.) << " " 
+				 << u(5.,0.) << " "  
+				 << u(5.,0.) << endl;
+
+    {
+         ofstream file("iter.txt");
+         file.precision(16);
+         file << 0 << endl;
+    };
+         

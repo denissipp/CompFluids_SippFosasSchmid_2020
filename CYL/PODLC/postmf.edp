@@ -1,0 +1,18 @@
+include "../Common/intro.edp"
+Uvvp [um,vm,pm];
+	{
+		ifstream file("mfcorr.txt"); 
+		file >> um[];
+	};    
+ofstream fifi("mesmf.txt");
+fifi.precision(16);
+{
+	for(real xx=1; xx<=20; xx+=2)
+	{
+	  for(real yy=-2; yy<=2.01; yy+=1)
+	  {
+		fifi << um(xx,yy) << endl;
+		fifi << vm(xx,yy) << endl;
+	  }
+	}
+};	
